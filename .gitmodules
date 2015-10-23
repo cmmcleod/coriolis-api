@@ -1,0 +1,3 @@
+[submodule "src/main/resources/data"]
+	path = src/main/resources/data
+	url = git@github.com:cmmcleod/coriolis-data.git

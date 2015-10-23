@@ -1,0 +1,52 @@
+defaultName: Coriolis
+
+eddnHost: eddn-relay.elite-markets.net
+eddnPort: 9500
+
+eddbStationJSONUrl: http://eddb.io/archive/v3/stations_lite.json
+eddbSystemJSONUrl: http://eddb.io/archive/v3/systems.json
+
+awsAccessKey: dev
+awsSecretKey: dev
+dynamoDBEndpoint: http://localhost:8000
+
+adminUser: admin
+adminPassword: admin
+
+server:
+  requestLog:
+    timeZone: UTC
+    appenders:
+      - type: console
+        threshold: WARN
+  gzip:
+    bufferSize: 8KiB
+  applicationConnectors:
+    - type: http
+      port: 3301
+  adminConnectors:
+    - type: http
+      port: 3302
+
+httpClientConfiguration:
+  timeout: 5000ms
+  connectionTimeout: 2500ms
+  timeToLive: 1h
+  cookiesEnabled: false
+  maxConnections: 1024
+  maxConnectionsPerRoute: 1024
+  keepAlive: 0ms
+  retries: 1
+  userAgent: Coriolis API (Apache HTTP Client 4.3.6)
+
+# Logging settings.
+logging:
+  level: INFO
+  loggers:
+    io.coriolis.api: DEBUG
+
+  appenders:
+    - type: console
+      threshold: DEBUG
+      logFormat: "%-6level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %X{code} %msg %n"
+      timeZone: UTC
