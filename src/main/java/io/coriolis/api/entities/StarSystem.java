@@ -1,10 +1,11 @@
-package io.coriolis.api.core;
+package io.coriolis.api.entities;
 
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBAttribute;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBHashKey;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBIgnore;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.coriolis.api.core.Universe;
 
 import java.util.HashSet;
 import java.util.Set;

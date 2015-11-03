@@ -1,6 +1,7 @@
-package io.coriolis.api.core;
+package io.coriolis.api.entities;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.coriolis.api.entities.Station;
 
 public class BuildStationCandidate {
 

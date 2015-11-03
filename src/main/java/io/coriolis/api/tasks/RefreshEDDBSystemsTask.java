@@ -10,7 +10,7 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 import com.google.common.collect.ImmutableMultimap;
-import io.coriolis.api.core.StarSystem;
+import io.coriolis.api.entities.StarSystem;
 import io.coriolis.api.core.Universe;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;

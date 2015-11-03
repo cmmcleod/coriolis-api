@@ -16,6 +16,7 @@ import org.zeromq.ZMQ;
 import org.zeromq.ZMQException;
 
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -100,7 +101,7 @@ public class EDDNListener implements Runnable {
 
                         // If no messages have been received the connection may have died
                         if (data == null) { // Timeout, reconnect
-                            logger.debug("Reconnecting to EDDN");
+                            logger.debug("Timeout, Reconnecting to EDDN");
                             socket.disconnect(url);
                             socket.connect(url);
                             continue;
@@ -222,20 +223,15 @@ public class EDDNListener implements Runnable {
                     retryConnection = false;
                     break;  // Stop listening / break while loop
                 } else {
-                    zMQErrors.mark();
                     logger.error("ZeroMQ Error: [" + ZMQ.Error.findByCode(e.getErrorCode()) + "] " + e.getMessage());
-                    try {
-                        logger.warn("EDDN reconnect attempt:" + reconnectAttempt + ", waiting" + (RECONNECT_WAIT * reconnectAttempt / 1000) + "seconds");
-                        Thread.sleep(RECONNECT_WAIT * (long)Math.pow(2, reconnectAttempt));
-                        reconnectAttempt++;
-                    } catch (InterruptedException e1) {
-                        logger.error("Unable to wait for EDDN reconnection attempt " + reconnectAttempt);
-                        retryConnection = false;
-                    }
+                    attemptReconnect();
                 }
+            } catch (IllegalArgumentException e) {
+                logger.error("Unable to connect to EDDN Host");
+                attemptReconnect();
             } finally {
                 socket.close();
-                connected = false;
+                setConnected(false);
                 logger.info("STOPPED listening to EDDN");
             }
         }   // Reconnect loop end
@@ -247,6 +243,19 @@ public class EDDNListener implements Runnable {
 
     private synchronized void setConnected(boolean connected) {
         this.connected = connected;
+    }
+
+    private void attemptReconnect() {
+        zMQErrors.mark();
+        setConnected(false);
+        try {
+            logger.warn("EDDN reconnect attempt:" + reconnectAttempt + ", waiting" + (RECONNECT_WAIT * reconnectAttempt / 1000) + "seconds");
+            Thread.sleep(RECONNECT_WAIT * (long) Math.pow(2, reconnectAttempt));
+            reconnectAttempt++;
+        } catch (InterruptedException e1) {
+            logger.error("Unable to wait for EDDN reconnection attempt " + reconnectAttempt);
+            retryConnection = false;
+        }
     }
 
     private static List<String> nodeToList(JsonNode node) {

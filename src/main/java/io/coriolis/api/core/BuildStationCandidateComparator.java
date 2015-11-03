@@ -1,5 +1,7 @@
 package io.coriolis.api.core;
 
+import io.coriolis.api.entities.BuildStationCandidate;
+
 import java.util.Comparator;
 
 /**

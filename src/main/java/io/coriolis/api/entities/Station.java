@@ -1,4 +1,4 @@
-package io.coriolis.api.core;
+package io.coriolis.api.entities;
 
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBAttribute;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBHashKey;
@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBIgnore;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.coriolis.api.core.Ship;
 import io.coriolis.api.core.modules.*;
 import io.coriolis.api.core.modules.exceptions.UnknownIdException;
 import io.coriolis.api.core.modules.exceptions.UnknownShipException;
@@ -17,8 +18,6 @@ import java.util.*;
 
 @DynamoDBTable(tableName="Stations")
 public class Station {
-
-    final static Logger logger = LoggerFactory.getLogger(Station.class);
 
     @JsonIgnore
     private int id;

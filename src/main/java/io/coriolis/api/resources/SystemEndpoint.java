@@ -1,9 +1,8 @@
 package io.coriolis.api.resources;
 
-import com.codahale.metrics.annotation.Metered;
 import com.codahale.metrics.annotation.Timed;
-import io.coriolis.api.core.StarSystem;
-import io.coriolis.api.core.Station;
+import io.coriolis.api.entities.StarSystem;
+import io.coriolis.api.entities.Station;
 import io.coriolis.api.core.Universe;
 import io.coriolis.api.resources.exceptions.JsonWebApplicationException;
 import io.dropwizard.jersey.caching.CacheControl;
@@ -11,8 +10,6 @@ import io.dropwizard.jersey.caching.CacheControl;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
