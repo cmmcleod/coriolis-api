@@ -2,14 +2,9 @@ package io.coriolis.api.core;
 
 import cern.colt.matrix.impl.SparseObjectMatrix3D;
 import com.BoxOfC.MDAG.MDAG;
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
-import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBScanExpression;
-import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedScanList;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
-import io.coriolis.api.core.aws.AmazonDynamoDBClientManager;
 import io.coriolis.api.core.modules.*;
 import io.coriolis.api.core.modules.exceptions.UnknownShipException;
 import io.coriolis.api.entities.BuildStationCandidate;
@@ -37,8 +32,6 @@ public class Universe {
     private Map<Integer, StarSystem> systemsIdMap;
     private MDAG systemNamesMDAG;
     private SparseObjectMatrix3D sectors;
-    private DynamoDBMapper dbMapper;
-    private AmazonDynamoDBClientManager dbClientManager;
 
     private Counter unknownSystems;
     private Counter unknownStations;
@@ -50,12 +43,10 @@ public class Universe {
     private Counter stationHasShipyardData;
     private Counter systemCounter;
 
-    public Universe(AmazonDynamoDBClientManager dbClientManager, MetricRegistry metrics) {
+    public Universe(MetricRegistry metrics) {
         systemsNameMap = new HashMap<>();
         systemsIdMap = new HashMap<>();
         sectors = new SparseObjectMatrix3D(SECTOR_RANGE, SECTOR_RANGE, SECTOR_RANGE);
-        dbMapper = new DynamoDBMapper(dbClientManager.getClient());
-        this.dbClientManager = dbClientManager;
         unknownSystems = metrics.counter("unknownSystems");
         unknownStations = metrics.counter("unknownStations");
         stationUpdates = metrics.meter("stationUpdates");
@@ -66,33 +57,6 @@ public class Universe {
         stationHasOutfittingData = metrics.counter("stationHasOutfittingData");
         stationHasShipyardData = metrics.counter("stationHasShipyardData");
         systemNamesMDAG = new MDAG(new ArrayList<String>());
-    }
-
-    public void loadFromDB(){
-        // Load Systems
-        DynamoDBScanExpression scanExpression = new DynamoDBScanExpression();
-
-        PaginatedScanList<StarSystem> systenResults = dbMapper.scan(StarSystem.class, scanExpression);
-        logger.debug(systenResults.size() + " Systems found in Database");
-        for (StarSystem system : systenResults) {
-            loadSystem(system);
-        }
-        logger.info(systemsIdMap.size() + " Systems loaded from Database");
-
-        // Load Stations
-        PaginatedScanList<Station> stationsResults = dbMapper.scan(Station.class, scanExpression);
-        logger.debug(stationsResults.size() + " Stations found in Database");
-        for (Station station : stationsResults) {
-            StarSystem system = getSystem(station.getSystemId());
-            if (system != null) {
-                loadStation(system, station);
-            } else {
-                unknownSystems.inc();
-                logger.error("Station " + station.getStationName() + "[" + station.getId() + "] found in unknown system [" + station.getSystemId() + "]");
-            }
-        }
-        logger.info(stationCounter.getCount() + " Stations loaded from Database");
-        dbClientManager.setHealthy(true);
     }
 
     public StarSystem getSystem(String systemName) {
@@ -257,17 +221,27 @@ public class Universe {
         }
     }
 
-    public Station updateStationFromEDDB(StarSystem system, int stationId, String stationName, int distanceLs, String allegiance, String padSize, String type, Boolean shipyard, Boolean outfitting) {
+    public Station updateStationFromEDDB(StarSystem system,
+                                         int stationId,
+                                         String stationName,
+                                         int distanceLs,
+                                         String allegiance,
+                                         String padSize,
+                                         String type,
+                                         Boolean shipyard,
+                                         Boolean outfitting,
+                                         List<String> ships,
+                                         List<String> eddbModuleIds) throws UnknownShipException {
         Station existingStation = system.getStation(stationId);
 
         if (existingStation == null) {
-            Station station = new Station(stationId, system.getId(), stationName, distanceLs, allegiance, padSize, type, shipyard, outfitting, DateTime.now());
+            Station station = new Station(stationId, system.getId(), stationName, distanceLs, allegiance, padSize, type, shipyard, outfitting, ships, eddbModuleIds, DateTime.now());
             loadStation(system, station);
             return station;
         } else {
             boolean hadShipyardBefore = existingStation.getHasShipyard();
             boolean hadOutfittingBefore = existingStation.getHasOutfitting();
-            if (existingStation.update(stationName, distanceLs, allegiance, padSize, type, shipyard, outfitting)) {
+            if (existingStation.update(stationName, distanceLs, allegiance, padSize, type, shipyard, outfitting, ships, eddbModuleIds)) {
                 stationUpdates.mark();
 
                 if(!hadShipyardBefore && existingStation.getHasShipyard()) { // Shipyard added
@@ -301,7 +275,6 @@ public class Universe {
                 boolean hadShipyardDataBefore = existingStation.hasShipyardData();
                 logger.debug("Updating Shipyard for Station: " + systemName + " [" + system.getId() + "] - " + stationName);
                 existingStation.setShips(ships);
-                saveStation(existingStation);
                 stationUpdates.mark();
 
                 if (!hadShipyardDataBefore) {
@@ -332,7 +305,6 @@ public class Universe {
                 boolean hadOutfittingBefore = existingStation.getHasOutfitting();
                 boolean hadOutfittingDataBefore = existingStation.hasOutfittingData();
                 existingStation.setModules(s, i, h, u);
-                saveStation(existingStation);
                 stationUpdates.mark();
 
                 if(!hadOutfittingDataBefore) {
@@ -393,15 +365,5 @@ public class Universe {
             sectorList = (ArrayList<StarSystem>) sectorObj;
         }
         sectorList.add(system);
-    }
-
-    private void saveStation(Station s) {
-        try {
-            dbMapper.save(s);
-            dbClientManager.setHealthy(true);
-        } catch (AmazonClientException e) {
-            logger.error("Unbale to save station " + s.getStationName() + " [" + s.getId() + "]: " + e.getMessage());
-            dbClientManager.setHealthy(false);
-        }
     }
 }

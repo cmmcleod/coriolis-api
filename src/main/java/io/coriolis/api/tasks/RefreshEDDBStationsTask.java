@@ -1,7 +1,5 @@
 package io.coriolis.api.tasks;
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -10,6 +8,7 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 import com.google.common.collect.ImmutableMultimap;
+import io.coriolis.api.core.modules.exceptions.UnknownShipException;
 import io.coriolis.api.entities.StarSystem;
 import io.coriolis.api.entities.Station;
 import io.coriolis.api.core.Universe;
@@ -31,14 +30,12 @@ public class RefreshEDDBStationsTask extends RunnableMonitoredTask {
     private Universe universe;
     private String stationJSONUrl;
     private HttpClient httpClient;
-    private DynamoDBMapper dbMapper;
 
-    public RefreshEDDBStationsTask(String stationJSONUrl, Universe universe, HttpClient httpClient, AmazonDynamoDBClient dbClient) {
+    public RefreshEDDBStationsTask(String stationJSONUrl, Universe universe, HttpClient httpClient) {
         super("refresh-eddb-stations");
         this.stationJSONUrl = stationJSONUrl;
         this.universe = universe;
         this.httpClient = httpClient;
-        dbMapper = new DynamoDBMapper(dbClient);
     }
 
     @Timed
@@ -51,7 +48,7 @@ public class RefreshEDDBStationsTask extends RunnableMonitoredTask {
             logger.debug("Temporary System JSON File created: " + stationsJsonFile.getAbsolutePath());
         } catch (IOException e) {
             logger.error("Unable to create temporary Stations JSON file: " + e.getMessage());
-            // TODO: healthcheck failed
+            executionFailed("Unable to create temporary Stations JSON file");
             return;
         }
 
@@ -60,7 +57,7 @@ public class RefreshEDDBStationsTask extends RunnableMonitoredTask {
             response = httpClient.execute(new HttpGet(stationJSONUrl));
         } catch (IOException e) {
             logger.error("Unable to pull Stations JSON data: " + e.getMessage());
-            // TODO: healthcheck failed
+            executionFailed("Unable to pull Stations JSON data");
             return;
         }
         HttpEntity entity = response.getEntity();
@@ -70,12 +67,12 @@ public class RefreshEDDBStationsTask extends RunnableMonitoredTask {
                 entity.writeTo(new FileOutputStream(stationsJsonFile));
                 stream.close();
             } catch (IOException e) {
-                // TODO: healthcheck failed
                 logger.error("Unable to write to temporary Stations JSON file: " + e.getMessage());
+                executionFailed("Unable to write to temporary Stations JSON file");
             }
         } else {
-            // TODO: healthcheck failed
             logger.error("Stations JSON response is empty!");
+            executionFailed("Stations JSON response is empty!");
         }
 
         JsonFactory f = new MappingJsonFactory();
@@ -84,13 +81,13 @@ public class RefreshEDDBStationsTask extends RunnableMonitoredTask {
         try {
             jp = f.createParser(stationsJsonFile);
         } catch (IOException e) {
-            // TODO: healthcheck failed
             logger.error("Unable to read temporary Stations JSON file: " + e.getMessage());
+            executionFailed("Unable to read temporary Stations JSON file");
             return;
         }
 
         JsonToken current;
-        List<Station> stationsToSave = new ArrayList<>();
+        int stationsUpdated = 0;
 
         try {
             current = jp.nextToken();
@@ -112,38 +109,56 @@ public class RefreshEDDBStationsTask extends RunnableMonitoredTask {
                             stationNode.get("max_landing_pad_size").asText(),
                             stationNode.get("type").asText(),
                             stationNode.get("has_shipyard").asBoolean(false),
-                            stationNode.get("has_outfitting").asBoolean(false)
+                            stationNode.get("has_outfitting").asBoolean(false),
+                            jsonNodeToList(stationNode.get("selling_ships")),
+                            jsonNodeToList(stationNode.get("selling_modules"))
                     );
                     if (s != null) {
-                        stationsToSave.add(s);
+                        stationsUpdated++;
                     }
                 } else {
                     logger.warn("Station " + stationNode.get("name").asText() + " [" + stationNode.get("id").asInt() +  "] in unknown system [" + stationNode.get("system_id").asInt() + "]");
                 }
             }
 
-        } catch (IOException e) {
-            // TODO: healthcheck failed
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+            executionFailed("NPE Error");
+            return;
+        }
+        catch (UnknownShipException e) {
+            logger.error("Unknown ship found parsing Station JSON Data: " + e.getMessage());
+            executionFailed("Unknown ship found parsing Station JSON Data: " + e.getMessage());
+            return;
+        }
+        catch (IOException e) {
             logger.error("Error parsing Station JSON data: " + e.getMessage());
+            executionFailed("Error parsing Station JSON data");
             return;
         } finally {
             // TODO: Universe release write lock
             stationsJsonFile.delete();
         }
 
-        // Save updated stations to the database
-        if(stationsToSave.size() > 0) {
-            logger.info("Saving " + stationsToSave.size() + " Stations to the Database");
-            try {
-                dbMapper.batchSave(stationsToSave);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        String summary = stationsToSave.size() + " Stations updated in the Database";
+        String summary = stationsUpdated + " Stations updated";
         logger.info(summary);
         executionSucceeded(summary);
         output.write(summary);
         output.write("\n");
+    }
+
+    private List<String> jsonNodeToList(JsonNode node) {
+
+        if(node == null || !node.isArray()) {
+            return null;
+        }
+
+        List<String> list = new ArrayList<>();
+
+        for (JsonNode n : node) {
+            list.add(n.asText());
+        }
+
+        return list;
     }
 }

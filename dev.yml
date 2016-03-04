@@ -3,12 +3,8 @@ defaultName: Coriolis
 eddnHost: eddn-relay.elite-markets.net
 eddnPort: 9500
 
-eddbStationJSONUrl: http://eddb.io/archive/v3/stations_lite.json
-eddbSystemJSONUrl: http://eddb.io/archive/v3/systems.json
-
-awsAccessKey: dev
-awsSecretKey: dev
-dynamoDBEndpoint: http://localhost:8000
+eddbStationJSONUrl: http://eddb.io/archive/v4/stations.json
+eddbSystemJSONUrl: http://eddb.io/archive/v4/systems.json
 
 adminUser: admin
 adminPassword: admin
@@ -18,15 +14,21 @@ server:
     timeZone: UTC
     appenders:
       - type: console
-        threshold: WARN
+        threshold: INFO
   gzip:
     bufferSize: 8KiB
   applicationConnectors:
-    - type: http
+    - type: https
       port: 3301
+      keyStorePath: dev.keystore
+      keyStorePassword: development
+      validateCerts: false
   adminConnectors:
-    - type: http
+    - type: https
       port: 3302
+      keyStorePath: dev.keystore
+      keyStorePassword: development
+      validateCerts: false
 
 httpClientConfiguration:
   timeout: 5000ms
@@ -38,6 +40,18 @@ httpClientConfiguration:
   keepAlive: 0ms
   retries: 1
   userAgent: Coriolis API (Apache HTTP Client 4.3.6)
+
+companionClientConfiguration:
+  timeout: 5000ms
+  connectionTimeout: 2500ms
+  timeToLive: 1h
+  cookiesEnabled: true
+  maxConnections: 1024
+  maxConnectionsPerRoute: 1024
+  keepAlive: 0ms
+  retries: 1
+  userAgent: Mozilla/5.0 (iPhone; CPU iPhone OS 8_1 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) Mobile/12B411
+
 
 # Logging settings.
 logging:

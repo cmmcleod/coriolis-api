@@ -79,6 +79,11 @@ public enum Modules {
     private ImmutableMap<String, Integer> hardpointIdToIndex;
     private ImmutableMap<String, Integer> utilityIdToIndex;
 
+    private ImmutableMap<String, Integer> standardEddbIdToIndex;
+    private ImmutableMap<String, Integer> internaldEddbIdToIndex;
+    private ImmutableMap<String, Integer> hardpointdEddbIdToIndex;
+    private ImmutableMap<String, Integer> utilitydEddbIdToIndex;
+
     private ImmutableMap<String, Integer> standardNameToIndex;
     private ImmutableMap<String, Integer> internalNameToIndex;
     private ImmutableMap<String, Integer> hardpointNameToIndex;
@@ -175,6 +180,34 @@ public enum Modules {
         return utilityNameToIndex.get(longName);
     }
 
+    public int getStandardIndexByEddbID(String eddbId) {
+        if(!standardEddbIdToIndex.containsKey(eddbId)) {
+            return -1;
+        }
+        return standardEddbIdToIndex.get(eddbId);
+    }
+
+    public int getInternalIndexByEddbID(String eddbId) {
+        if(!internaldEddbIdToIndex.containsKey(eddbId)) {
+            return -1;
+        }
+        return internaldEddbIdToIndex.get(eddbId);
+    }
+
+    public int getHardpointIndexByEddbID(String eddbId) {
+        if(!hardpointdEddbIdToIndex.containsKey(eddbId)) {
+            return -1;
+        }
+        return hardpointdEddbIdToIndex.get(eddbId);
+    }
+
+    public int getUtilityIndexByEddbID(String eddbId) {
+        if(!utilitydEddbIdToIndex.containsKey(eddbId)) {
+            return -1;
+        }
+        return utilitydEddbIdToIndex.get(eddbId);
+    }
+
     public ModuleSet createStandardSet(){
         return new ModuleSet(getStandardCount());
     }
@@ -254,27 +287,34 @@ public enum Modules {
         String[] files = new String[]{"frame_shift_drive","fuel_tank","life_support","power_distributor","power_plant","sensors","thrusters"};
         ImmutableList.Builder<String> standardIdsBuilder = ImmutableList.builder();
         ImmutableMap.Builder<String, Integer> standardIdToIndexBuilder = ImmutableMap.builder();
+        ImmutableMap.Builder<String, Integer> standardEddbIdToIndexBuilder = ImmutableMap.builder();
         ImmutableMap.Builder<String, Integer> standardNameToIndexBuilder = ImmutableMap.builder();
         ObjectMapper mapper = new ObjectMapper();
         int index = 0;
+        String currentFile = null;
+
 
         try {
             for (String file : files) {
+                currentFile = file;
                 JsonNode root = mapper.readTree(getClass().getResourceAsStream("/data/components/standard/" + file + ".json"));
                 for(Iterator<JsonNode> modules = root.elements(); modules.hasNext(); ) {
                     JsonNode module = modules.next();
                     String id = module.get("id").asText();
+                    String eddbID = module.get("eddbID").asText();
                     String longName = (module.has("name") ? module.get("name").asText().toLowerCase() : groupToName.get(module.get("grp").asText()))
                             + module.get("class").asText()
                             + module.get("rating").asText();
                     standardIdsBuilder.add(id);
                     standardIdToIndexBuilder.put(id, index);
+                    standardEddbIdToIndexBuilder.put(eddbID, index);
                     standardNameToIndexBuilder.put(longName, index);
                     index++;
                 }
             }
 
             JsonNode root = mapper.readTree(getClass().getResourceAsStream("/data/components/bulkheads.json"));
+            currentFile = "bulkheads.json";
             for(Iterator<String> ships = root.fieldNames(); ships.hasNext(); ) {
                 String ship = ships.next();
                 String canonicalShipName = Ship.fromString(ship).toString();
@@ -288,14 +328,17 @@ public enum Modules {
                 }
             }
 
+        } catch (NullPointerException e) {
+            logger.error("Unable to read Standard file: " + currentFile + " " + e.getMessage() );
         } catch (IOException e) {
-            logger.error("Unable to read Standard file: " + e.getMessage() );
+            logger.error("Unable to read Standard file: " + currentFile + " " + e.getMessage() );
         } catch (UnknownShipException e) {
             logger.error("Unknown ship from bulkheads: " + e.getMessage() );
         }
 
         standardIds = standardIdsBuilder.build();
         standardIdToIndex = standardIdToIndexBuilder.build();
+        standardEddbIdToIndex = standardEddbIdToIndexBuilder.build();
         standardNameToIndex = standardNameToIndexBuilder.build();
     }
 
@@ -308,6 +351,7 @@ public enum Modules {
         };
         ImmutableList.Builder<String> internalIdsBuilder = ImmutableList.builder();
         ImmutableBiMap.Builder<String, Integer> internalIdToIndexBuilder = ImmutableBiMap.builder();
+        ImmutableBiMap.Builder<String, Integer> internalEddbIdToIndexBuilder = ImmutableBiMap.builder();
         ImmutableBiMap.Builder<String, Integer> internalNameToIndexBuilder = ImmutableBiMap.builder();
         ObjectMapper mapper = new ObjectMapper();
         int index = 0;
@@ -321,11 +365,13 @@ public enum Modules {
                 for(Iterator<JsonNode> modules = root.elements(); modules.hasNext(); ) {
                     JsonNode module = modules.next();
                     String id = module.get("id").asText();
+                    String eddbID = module.get("eddbID").asText();
                     String longName = (module.has("name") ? module.get("name").asText().toLowerCase() : groupName)
                             + module.get("class").asText()
                             + module.get("rating").asText();
                     internalIdsBuilder.add(id);
                     internalIdToIndexBuilder.put(id, index);
+                    internalEddbIdToIndexBuilder.put(eddbID, index);
                     internalNameToIndexBuilder.put(longName, index);
                     index++;
                 }
@@ -336,6 +382,7 @@ public enum Modules {
 
         internalIds = internalIdsBuilder.build();
         internalIdToIndex = internalIdToIndexBuilder.build();
+        internaldEddbIdToIndex = internalEddbIdToIndexBuilder.build();
         internalNameToIndex = internalNameToIndexBuilder.build();
     }
 
@@ -347,9 +394,11 @@ public enum Modules {
         };
         ImmutableList.Builder<String> hardPointIdsBuilder = ImmutableList.builder();
         ImmutableBiMap.Builder<String, Integer> hardpointIdToIndexBuilder = ImmutableBiMap.builder();
+        ImmutableBiMap.Builder<String, Integer> hardpointEddbIdToIndexBuilder = ImmutableBiMap.builder();
         ImmutableBiMap.Builder<String, Integer> hardpointNameToIndexBuilder = ImmutableBiMap.builder();
         ImmutableList.Builder<String> utilityIdsBuilder = ImmutableList.builder();
         ImmutableBiMap.Builder<String, Integer> utilityIdToIndexBuilder = ImmutableBiMap.builder();
+        ImmutableBiMap.Builder<String, Integer> utilityEddbIdToIndexBuilder = ImmutableBiMap.builder();
         ImmutableBiMap.Builder<String, Integer> utilityNameToIndexBuilder = ImmutableBiMap.builder();
         ObjectMapper mapper = new ObjectMapper();
         int hpIndex = 0;
@@ -364,6 +413,7 @@ public enum Modules {
                 for(Iterator<JsonNode> modules = root.elements(); modules.hasNext(); ) {
                     JsonNode module = modules.next();
                     String id = module.get("id").asText();
+                    String eddbID = module.get("eddbID").asText();
                     String longName = (module.has("name") ? module.get("name").asText().toLowerCase() : groupName)
                             + module.get("class").asText()
                             + module.get("rating").asText()
@@ -374,10 +424,12 @@ public enum Modules {
                         hardPointIdsBuilder.add(id);
                         hardpointIdToIndexBuilder.put(id, hpIndex);
                         hardpointNameToIndexBuilder.put(longName, hpIndex);
+                        hardpointEddbIdToIndexBuilder.put(eddbID, hpIndex);
                         hpIndex++;
                     } else {
                         utilityIdsBuilder.add(id);
                         utilityIdToIndexBuilder.put(id, uIndex);
+                        utilityEddbIdToIndexBuilder.put(eddbID, uIndex);
                         utilityNameToIndexBuilder.put(longName, uIndex);
                         uIndex++;
                     }
@@ -389,9 +441,11 @@ public enum Modules {
 
         hardpointIds = hardPointIdsBuilder.build();
         hardpointIdToIndex = hardpointIdToIndexBuilder.build();
+        hardpointdEddbIdToIndex = hardpointEddbIdToIndexBuilder.build();
         hardpointNameToIndex = hardpointNameToIndexBuilder.build();
         utilityIds = utilityIdsBuilder.build();
         utilityIdToIndex = utilityIdToIndexBuilder.build();
+        utilitydEddbIdToIndex = utilityEddbIdToIndexBuilder.build();
         utilityNameToIndex = utilityNameToIndexBuilder.build();
     }
 

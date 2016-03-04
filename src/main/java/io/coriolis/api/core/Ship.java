@@ -15,7 +15,7 @@ public enum Ship {
     COBRA_MK_III("Cobra Mk III", "cobra_mk_iii"),
     DIAMONDBACK_EXPLORER("Diamondback Explorer", "diamondback_explorer"),
     DIAMONDBACK_SCOUT("Diamondback Scout", "diamondback", "diamondback_scout"),
-    EAGLE("Eagle"),
+    EAGLE("Eagle", "eagle mk ii"),
     FEDERAL_ASSAULT_SHIP("Federal Assault Ship", "federal_assault_ship"),
     FEDERAL_DROPSHIP("Federal Dropship", "federal_dropship"),
     FEDERAL_GUNSHIP("Federal Gunship", "federal_gunship"),
@@ -26,11 +26,11 @@ public enum Ship {
     IMPERIAL_EAGLE("Imperial Eagle", "imperial_eagle"),
     ORCA("Orca"),
     PYTHON("Python"),
-    SIDEWINDER("Sidewinder"),
+    SIDEWINDER("Sidewinder", "sidewinder mk i"),
     TYPE_6_TRANSPORTER("Type-6 Transporter", "type_6_transporter"),
     TYPE_7_TRANSPORTER("Type-7 Transporter", "type_7_transporter", "type_7_transport"),
     TYPE_9_HEAVY("Type-9 Heavy", "type_9_heavy"),
-    VIPER("Viper"),
+    VIPER("Viper", "viper mk iii"),
     VULTURE("Vulture");
 
     final static Logger logger = LoggerFactory.getLogger(Ship.class);
@@ -55,7 +55,7 @@ public enum Ship {
     }
 
     public static Ship fromString(String name) throws UnknownShipException {
-        name = name.trim();
+        name = name.trim().replace(".", "");
         for (Ship s : Ship.values()) {
             if (name.equalsIgnoreCase(s.toString()) || (s.aliases != null && s.aliases.contains(name.toLowerCase()))) {
                 return s;

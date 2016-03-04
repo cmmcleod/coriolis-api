@@ -32,31 +32,28 @@ public class ApiConfiguration extends Configuration {
 
     @NotEmpty
     @JsonProperty
-    private String awsAccessKey;
-
-    @NotEmpty
-    @JsonProperty
-    private String awsSecretKey;
-
-    @NotEmpty
-    @JsonProperty
     private String adminUser;
 
     @NotEmpty
     @JsonProperty
     private String adminPassword;
 
-    @NotEmpty
-    @JsonProperty
-    private String dynamoDBEndpoint;
-
     @Valid
     @NotNull
     @JsonProperty
     private HttpClientConfiguration httpClientConfiguration = new HttpClientConfiguration();
 
+    @Valid
+    @NotNull
+    @JsonProperty
+    private HttpClientConfiguration companionClientConfiguration = new HttpClientConfiguration();
+
     public HttpClientConfiguration getHttpClientConfiguration() {
         return httpClientConfiguration;
+    }
+
+    public HttpClientConfiguration getCompanionClientConfiguration() {
+        return companionClientConfiguration;
     }
 
     public String getDefaultName() {
@@ -85,18 +82,6 @@ public class ApiConfiguration extends Configuration {
 
     public String getAdminUser() {
         return adminUser;
-    }
-
-    public String getAwsAccessKey() {
-        return awsAccessKey;
-    }
-
-    public String getAwsSecretKey() {
-        return awsSecretKey;
-    }
-
-    public String getDynamoDBEndpoint() {
-        return dynamoDBEndpoint;
     }
 
 }

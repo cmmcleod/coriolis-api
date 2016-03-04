@@ -1,7 +1,5 @@
 package io.coriolis.api.tasks;
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -20,8 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
 
 public class RefreshEDDBSystemsTask extends RunnableMonitoredTask {
 
@@ -30,14 +26,12 @@ public class RefreshEDDBSystemsTask extends RunnableMonitoredTask {
     private Universe universe;
     private String systemJSONUrl;
     private HttpClient httpClient;
-    private DynamoDBMapper dbMapper;
 
-    public RefreshEDDBSystemsTask(String systemJSONUrl, Universe universe, HttpClient httpClient, AmazonDynamoDBClient dbClient) {
+    public RefreshEDDBSystemsTask(String systemJSONUrl, Universe universe, HttpClient httpClient) {
         super("refresh-eddb-systems");
         this.systemJSONUrl = systemJSONUrl;
         this.universe = universe;
         this.httpClient = httpClient;
-        dbMapper = new DynamoDBMapper(dbClient);
     }
 
     @Timed
@@ -90,7 +84,7 @@ public class RefreshEDDBSystemsTask extends RunnableMonitoredTask {
         }
 
         JsonToken current;
-        List<StarSystem> systemToSave = new ArrayList<>();
+        int systemUpdated = 0;
 
         try {
             current = jp.nextToken();
@@ -111,7 +105,7 @@ public class RefreshEDDBSystemsTask extends RunnableMonitoredTask {
                         systemNode.get("needs_permit").asBoolean(false)
                 );
                 if (s != null) {
-                    systemToSave.add(s);
+                    systemUpdated++;
                 }
             }
         } catch (IOException e) {
@@ -123,12 +117,7 @@ public class RefreshEDDBSystemsTask extends RunnableMonitoredTask {
             systemsJsonFile.delete();
         }
 
-        // Save updated systems to the database
-        if(systemToSave.size() > 0) {
-            logger.info("Saving " + systemToSave.size() + " Systems to the Database");
-            dbMapper.batchSave(systemToSave);
-        }
-        String summary = systemToSave.size() + " Systems updated in the Database";
+        String summary = systemUpdated + " Systems updated";
         logger.info(summary);
         executionSucceeded(summary);
         output.write(summary);
